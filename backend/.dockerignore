@@ -1,0 +1,14 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv
+.venv
+.env
+uploads/avatars/*
+uploads/audio/*
+uploads/video/*
+!uploads/avatars/.gitkeep
+!uploads/audio/.gitkeep
+!uploads/video/.gitkeep
