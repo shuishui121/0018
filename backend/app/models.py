@@ -121,6 +121,23 @@ class Troupe(Base):
     genre = relationship("Genre", back_populates="troupes")
 
 
+class InheritorRelation(Base):
+    """传承人多维度关系（除师徒外的亲属、同门等）"""
+    __tablename__ = "inheritor_relations"
+    id = Column(Integer, primary_key=True)
+    from_inheritor_id = Column(Integer, ForeignKey("inheritors.id", ondelete="CASCADE"), nullable=False, index=True)
+    to_inheritor_id = Column(Integer, ForeignKey("inheritors.id", ondelete="CASCADE"), nullable=False, index=True)
+    relation_type = Column(String(32), nullable=False, index=True)
+    description = Column(String(256), nullable=True)
+
+    from_inheritor = relationship("Inheritor", foreign_keys=[from_inheritor_id])
+    to_inheritor = relationship("Inheritor", foreign_keys=[to_inheritor_id])
+
+    __table_args__ = (
+        Index("idx_relation_pair", "from_inheritor_id", "to_inheritor_id", "relation_type", unique=True),
+    )
+
+
 class User(Base):
     """管理员用户"""
     __tablename__ = "users"

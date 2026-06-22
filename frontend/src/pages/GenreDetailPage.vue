@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { ArrowLeft, Quote, Landmark, Users } from 'lucide-vue-next'
+import { ArrowLeft, Quote, Landmark, Users, GitBranch, ChevronRight } from 'lucide-vue-next'
 import { api, mediaUrl, type GenreDetail } from '@/lib/api'
 import { useAsync } from '@/composables/useAsync'
 import SectionHeader from '@/components/SectionHeader.vue'
@@ -129,6 +129,35 @@ const activeInheritors = computed(() => (genre.value?.inheritors ?? []).slice(0,
         <div class="mt-4 flex flex-wrap gap-2">
           <span v-for="(a, i) in areas" :key="i" class="chip chip-active !py-1.5 font-serif">{{ a }}</span>
         </div>
+      </section>
+
+      <!-- 谱系图谱入口 -->
+      <section class="mt-12">
+        <RouterLink
+          :to="`/genres/${id}/genealogy`"
+          class="paper-card paper-card-hover block relative overflow-hidden p-6 border-l-4 border-vermilion"
+        >
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-full bg-vermilion/10 flex items-center justify-center shrink-0 border-2 border-vermilion/30">
+                <GitBranch class="h-7 w-7 text-vermilion" />
+              </div>
+              <div>
+                <div class="label-eyebrow !text-xs">GENEALOGY MAP</div>
+                <h3 class="display-serif mt-1 text-xl md:text-2xl text-ink-900">
+                  {{ genre.name }} · 传承谱系图谱
+                </h3>
+                <p class="mt-1 text-sm text-ink-500 font-serif">
+                  从第一代宗师脉络溯源，直观查看该剧种师徒传承、亲属同门等多维关系网络
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 btn-primary !py-3 !px-5">
+              查看谱系
+              <ChevronRight class="h-4 w-4" />
+            </div>
+          </div>
+        </RouterLink>
       </section>
 
       <!-- 关联活跃传承人 -->

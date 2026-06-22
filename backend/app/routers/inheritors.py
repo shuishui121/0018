@@ -1,7 +1,8 @@
 """传承人路由"""
 import time
 from io import BytesIO
-from typing import Optional
+from collections import deque
+from typing import Optional, List, Tuple, Set
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from sqlalchemy import func, or_
@@ -15,6 +16,28 @@ from ..deps import get_current_user
 from .genres import _inheritor_to_list
 
 router = APIRouter(prefix="/inheritors", tags=["传承人"])
+
+RELATION_LABELS = {
+    "master": "师傅",
+    "apprentice": "徒弟",
+    "senior_fellow": "师兄/师姐",
+    "junior_fellow": "师弟/师妹",
+    "sibling": "兄弟姐妹",
+    "spouse": "配偶",
+    "parent": "父母",
+    "child": "子女",
+    "cousin": "表/堂兄弟姐妹",
+    "uncle_aunt": "叔伯/舅姨",
+    "nephew_niece": "侄子/侄女/外甥/外甥女",
+    "grandparent": "祖父母/外祖父母",
+    "grandchild": "孙辈",
+    "colleague": "同事",
+    "friend": "友人",
+}
+
+RELATION_TYPE_OPTIONS = list(RELATION_LABELS.keys())
+
+MAX_RELATION_DEPTH = 3
 
 
 def _pinyin_initial(name: str) -> str:
@@ -295,4 +318,158 @@ def batch_import(file: UploadFile = File(...), db: Session = Depends(get_db),
         failed=len(data_rows) - success,
         errors=errors[:100],
         elapsed_ms=elapsed_ms,
+    )
+
+
+def _get_label(rtype: str) -> str:
+    return RELATION_LABELS.get(rtype, rtype)
+
+
+def _find_shared_learning(db: Session, a_id: int, b_id: int) -> Optional[str]:
+    """查找两位传承人的共同学习经历"""
+    a_years = {(l.year, l.title) for l in db.query(models.Learning).filter(models.Learning.inheritor_id == a_id).all()}
+    b_years = {(l.year, l.title) for l in db.query(models.Learning).filter(models.Learning.inheritor_id == b_id).all()}
+    common = a_years & b_years
+    if not common:
+        return None
+    items = [f"{y}年《{t}》" for y, t in sorted(common) if y and t]
+    return "、".join(items) if items else None
+
+
+def _collect_immediate_relations(
+    db: Session,
+    center_id: int,
+    visited: Set[int],
+) -> List[Tuple[int, str, str, int]]:
+    """收集某个传承人的直接关系，返回 [(target_id, relation_type, direction, distance)]"""
+    results: List[Tuple[int, str, str, int]] = []
+
+    center = db.query(models.Inheritor).filter(models.Inheritor.id == center_id).first()
+    if not center:
+        return results
+
+    # 1. 师徒关系（来自 master_id 字段）
+    if center.master_id and center.master_id not in visited:
+        results.append((center.master_id, "master", "up", 1))
+    # 徒弟（查找 master_id = center.id 的人）
+    apprentices = (
+        db.query(models.Inheritor)
+          .filter(models.Inheritor.master_id == center_id)
+          .all()
+    )
+    for app in apprentices:
+        if app.id not in visited:
+            results.append((app.id, "apprentice", "down", 1))
+    # 同门（同一个师傅的其他人）
+    if center.master_id:
+        fellows = (
+            db.query(models.Inheritor)
+              .filter(
+                  models.Inheritor.master_id == center.master_id,
+                  models.Inheritor.id != center_id,
+              )
+              .all()
+        )
+        for f in fellows:
+            if f.id not in visited:
+                # 粗略按出生年分师兄师弟
+                if center.birth_date and f.birth_date and f.birth_date < center.birth_date:
+                    results.append((f.id, "senior_fellow", "side", 2))
+                else:
+                    results.append((f.id, "junior_fellow", "side", 2))
+
+    # 2. 多维度关系（来自 inheritor_relations 表）
+    out_rels = (
+        db.query(models.InheritorRelation)
+          .filter(models.InheritorRelation.from_inheritor_id == center_id)
+          .all()
+    )
+    for r in out_rels:
+        if r.to_inheritor_id not in visited:
+            results.append((r.to_inheritor_id, r.relation_type, "out", 1))
+
+    in_rels = (
+        db.query(models.InheritorRelation)
+          .filter(models.InheritorRelation.to_inheritor_id == center_id)
+          .all()
+    )
+    for r in in_rels:
+        if r.from_inheritor_id not in visited:
+            # 反向映射关系类型
+            rev_map = {
+                "parent": "child",
+                "child": "parent",
+                "uncle_aunt": "nephew_niece",
+                "nephew_niece": "uncle_aunt",
+                "grandparent": "grandchild",
+                "grandchild": "grandparent",
+                "senior_fellow": "junior_fellow",
+                "junior_fellow": "senior_fellow",
+            }
+            rev_type = rev_map.get(r.relation_type, r.relation_type)
+            results.append((r.from_inheritor_id, rev_type, "in", 1))
+
+    return results
+
+
+@router.get("/{inheritor_id}/relations", response_model=schemas.InheritorRelationsResponse)
+def get_inheritor_relations(
+    inheritor_id: int,
+    relation_type: Optional[str] = Query(None, description="按关系类型筛选"),
+    max_distance: int = Query(MAX_RELATION_DEPTH, ge=1, le=5, description="最大关联距离"),
+    db: Session = Depends(get_db),
+):
+    """获取传承人的所有关联人（含师徒、亲属、同门等）"""
+    center = db.query(models.Inheritor).filter(models.Inheritor.id == inheritor_id).first()
+    if not center:
+        raise HTTPException(status_code=404, detail="传承人不存在")
+
+    # BFS 遍历，避免重复
+    visited: Set[int] = {inheritor_id}
+    queue: deque = deque()
+    queue.append((inheritor_id, 0))
+
+    relation_items: List[schemas.InheritorRelationItem] = []
+
+    while queue:
+        current_id, current_dist = queue.popleft()
+        if current_dist >= max_distance:
+            continue
+
+        immediate = _collect_immediate_relations(db, current_id, visited)
+
+        for target_id, rtype, direction, edge_dist in immediate:
+            if target_id in visited:
+                continue
+            visited.add(target_id)
+
+            total_dist = current_dist + edge_dist
+            if total_dist > max_distance:
+                continue
+
+            # 按关系类型过滤（第一层直接匹配，间接关系不过滤类型但保留）
+            if relation_type and current_dist == 0 and rtype != relation_type:
+                continue
+
+            target_ih = db.query(models.Inheritor).filter(models.Inheritor.id == target_id).first()
+            if not target_ih:
+                continue
+
+            shared = _find_shared_learning(db, inheritor_id, target_id) if total_dist <= 2 else None
+
+            relation_items.append(schemas.InheritorRelationItem(
+                inheritor=_inheritor_to_list(target_ih),
+                relation_type=rtype,
+                relation_label=_get_label(rtype),
+                distance=total_dist,
+                shared_learning=shared,
+                direction=direction,
+            ))
+
+            if total_dist < max_distance:
+                queue.append((target_id, total_dist))
+
+    return schemas.InheritorRelationsResponse(
+        center=_inheritor_to_list(center),
+        relations=sorted(relation_items, key=lambda x: (x.distance, x.relation_label)),
     )

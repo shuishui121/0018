@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Search, BookOpen, ShieldCheck, ArrowRight, ScrollText } from 'lucide-vue-next'
+import { Search, BookOpen, ShieldCheck, ArrowRight, ScrollText, GitBranch } from 'lucide-vue-next'
 import { api } from '@/lib/api'
 import { useAsync } from '@/composables/useAsync'
 import SealBadge from '@/components/SealBadge.vue'
@@ -27,6 +27,13 @@ const modules = [
     eyebrow: 'GENRES',
     title: '剧种百科',
     desc: '纵览各戏曲剧种的历史渊源、艺术特点、经典剧目与主要流派。',
+  },
+  {
+    to: '/genres/1/genealogy',
+    icon: GitBranch,
+    eyebrow: 'GENEALOGY',
+    title: '传承谱系',
+    desc: '以树状网络图谱直观呈现某剧种从宗师到传人的师承关系与亲属脉络。',
   },
   {
     to: '/admin',
@@ -122,7 +129,7 @@ const stats = computed(() => [
         <ScrollText class="hidden h-8 w-8 text-ink-300 md:block" />
       </div>
 
-      <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         <RouterLink
           v-for="(m, i) in modules"
           :key="m.to"

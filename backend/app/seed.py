@@ -299,4 +299,56 @@ def seed(db: Session) -> None:
         for m in media_list[:2]:
             db.add(models.Media(inheritor_id=ih_obj.id, **m))
 
+    # 多维度关系数据（亲属、配偶、同事等）
+    RELATION_DATA = [
+        # 京剧
+        {"from": "梅葆玖", "to": "李世济", "type": "colleague", "desc": "北京京剧院多年同事"},
+        {"from": "谭元寿", "to": "张建国", "type": "senior_fellow", "desc": "谭门一脉，私淑弟子"},
+        {"from": "迟小秋", "to": "张建国", "type": "colleague", "desc": "国家京剧院同事"},
+        {"from": "杜镇杰", "to": "王珮瑜", "type": "senior_fellow", "desc": "余杨派同门师兄妹"},
+        # 越剧
+        {"from": "袁雪芬", "to": "王文娟", "type": "colleague", "desc": "越剧十姐妹之一"},
+        {"from": "徐玉兰", "to": "王文娟", "type": "spouse", "desc": "越剧舞台黄金搭档，生活中亦为挚友"},
+        {"from": "单仰萍", "to": "钱惠丽", "type": "colleague", "desc": "上海越剧院同事，多次搭档演出"},
+        {"from": "茅威涛", "to": "陈飞", "type": "colleague", "desc": "浙江小百花时期同事"},
+        # 黄梅戏
+        {"from": "严凤英", "to": "马兰", "type": "grandparent", "desc": "严派艺术隔代传人"},
+        {"from": "韩再芬", "to": "吴琼", "type": "colleague", "desc": "黄梅戏五朵金花之二"},
+        {"from": "马兰", "to": "黄新德", "type": "colleague", "desc": "多年舞台搭档"},
+        # 豫剧
+        {"from": "常香玉", "to": "马金凤", "type": "colleague", "desc": "豫剧六大名旦之二"},
+        {"from": "虎美玲", "to": "汪荃珍", "type": "colleague", "desc": "常派同门师姐妹"},
+        {"from": "李树建", "to": "汪荃珍", "type": "colleague", "desc": "河南豫剧院同事"},
+        # 昆曲
+        {"from": "俞振飞", "to": "张继青", "type": "colleague", "desc": "南北昆曲大师"},
+        {"from": "蔡正仁", "to": "王芳", "type": "senior_fellow", "desc": "昆曲俞派同门"},
+        {"from": "王芳", "to": "魏春荣", "type": "colleague", "desc": "苏昆与北昆交流多年"},
+        # 秦腔
+        {"from": "马友仙", "to": "贠宗翰", "type": "colleague", "desc": "陕西省戏曲研究院同事"},
+        {"from": "李梅", "to": "李东桥", "type": "colleague", "desc": "戏曲研究院同事，多次合作"},
+        {"from": "齐爱云", "to": "李梅", "type": "colleague", "desc": "秦腔舞台姐妹"},
+    ]
+
+    for rd in RELATION_DATA:
+        from_ih = inheritor_map.get(rd["from"])
+        to_ih = inheritor_map.get(rd["to"])
+        if not from_ih or not to_ih:
+            continue
+        existing = (
+            db.query(models.InheritorRelation)
+              .filter(
+                  models.InheritorRelation.from_inheritor_id == from_ih.id,
+                  models.InheritorRelation.to_inheritor_id == to_ih.id,
+                  models.InheritorRelation.relation_type == rd["type"],
+              )
+              .first()
+        )
+        if not existing:
+            db.add(models.InheritorRelation(
+                from_inheritor_id=from_ih.id,
+                to_inheritor_id=to_ih.id,
+                relation_type=rd["type"],
+                description=rd.get("desc"),
+            ))
+
     db.commit()

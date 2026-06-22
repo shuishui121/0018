@@ -4,6 +4,7 @@ import DirectoryPage from '@/pages/DirectoryPage.vue'
 import InheritorDetailPage from '@/pages/InheritorDetailPage.vue'
 import GenresPage from '@/pages/GenresPage.vue'
 import GenreDetailPage from '@/pages/GenreDetailPage.vue'
+import GenealogyPage from '@/pages/GenealogyPage.vue'
 import AdminPage from '@/pages/AdminPage.vue'
 import AdminInheritorFormPage from '@/pages/AdminInheritorFormPage.vue'
 import AdminImportPage from '@/pages/AdminImportPage.vue'
@@ -16,6 +17,7 @@ const routes = [
   { path: '/inheritor/:id', name: 'inheritor', component: InheritorDetailPage },
   { path: '/genres', name: 'genres', component: GenresPage },
   { path: '/genres/:id', name: 'genre', component: GenreDetailPage },
+  { path: '/genres/:id/genealogy', name: 'genealogy', component: GenealogyPage },
   { path: '/login', name: 'login', component: LoginPage },
   { path: '/admin', name: 'admin', component: AdminPage, meta: { requiresAuth: true } },
   { path: '/admin/inheritor/new', name: 'admin-new', component: AdminInheritorFormPage, meta: { requiresAuth: true } },

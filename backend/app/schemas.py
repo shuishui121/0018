@@ -146,6 +146,48 @@ class UploadResult(BaseModel):
     size: int
 
 
+# ==================== 传承人关系 ====================
+class InheritorRelationItem(BaseModel):
+    inheritor: InheritorListItem
+    relation_type: str
+    relation_label: str
+    distance: int
+    shared_learning: Optional[str] = None
+    direction: Optional[str] = None
+
+
+class InheritorRelationsResponse(BaseModel):
+    center: InheritorListItem
+    relations: List[InheritorRelationItem] = Field(default_factory=list)
+
+
+# ==================== 剧种谱系 ====================
+class GenealogyNode(BaseModel):
+    id: int
+    name: str
+    role_type: Optional[str] = None
+    avatar: Optional[str] = None
+    region: Optional[str] = None
+    genre_id: Optional[int] = None
+    master_id: Optional[int] = None
+    generation: int
+    children: List["GenealogyNode"] = Field(default_factory=list)
+
+
+class GenealogyEdge(BaseModel):
+    source: int
+    target: int
+    relation_type: str
+    relation_label: str
+
+
+class GenealogyResponse(BaseModel):
+    genre: Genre
+    nodes: List[GenealogyNode]
+    edges: List[GenealogyEdge]
+    max_generation: int
+
+
 # ==================== 鉴权 ====================
 class LoginRequest(BaseModel):
     username: str

@@ -126,6 +126,54 @@ export interface UploadResult {
   size: number
 }
 
+// ==================== 传承人关系 ====================
+export interface InheritorRelationItem {
+  inheritor: InheritorListItem
+  relation_type: string
+  relation_label: string
+  distance: number
+  shared_learning: string | null
+  direction: string | null
+}
+
+export interface InheritorRelationsResponse {
+  center: InheritorListItem
+  relations: InheritorRelationItem[]
+}
+
+// ==================== 剧种谱系 ====================
+export interface GenealogyNode {
+  id: number
+  name: string
+  role_type: string | null
+  avatar: string | null
+  region: string | null
+  genre_id: number | null
+  master_id: number | null
+  generation: number
+  children: GenealogyNode[]
+}
+
+export interface GenealogyEdge {
+  source: number
+  target: number
+  relation_type: string
+  relation_label: string
+}
+
+export interface GenealogyResponse {
+  genre: Genre
+  nodes: GenealogyNode[]
+  edges: GenealogyEdge[]
+  max_generation: number
+}
+
+export interface GenealogyFilters {
+  max_generations?: number
+  keyword?: string
+  region?: string
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -223,6 +271,15 @@ export const api = {
   },
   getGenre(id: number) {
     return request<GenreDetail>(`/genres/${id}`)
+  },
+  getGenreGenealogy(id: number, filters: GenealogyFilters = {}) {
+    return request<GenealogyResponse>(`/genres/${id}/genealogy${toQuery(filters as Record<string, unknown>)}`)
+  },
+  // 传承人关系
+  getInheritorRelations(id: number, filters: { relation_type?: string; max_distance?: number } = {}) {
+    return request<InheritorRelationsResponse>(
+      `/inheritors/${id}/relations${toQuery(filters as Record<string, unknown>)}`,
+    )
   },
   // 上传
   uploadAvatar(file: File) {
