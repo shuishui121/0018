@@ -19,7 +19,7 @@ DATABASE_URL = os.getenv(
 
 SECRET_KEY = os.getenv("SECRET_KEY", "lydc-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("TOKEN_EXPIRE_MINUTES", "60 * 24 * 7"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("TOKEN_EXPIRE_MINUTES", "10080"))  # 一周 = 60 * 24 * 7
 
 DEFAULT_ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")

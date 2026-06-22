@@ -61,7 +61,7 @@ def list_inheritors(
     pinyin: Optional[str] = Query(None),
     keyword: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
-    size: int = Query(12, ge=1, le=100),
+    size: int = Query(12, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
     q = _build_query(db, genre, role, region, master, age_group, pinyin, keyword)
